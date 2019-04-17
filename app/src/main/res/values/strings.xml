@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">msg.java</string>
+    <string name="HW_FR">Bonjour monde !</string>
+    <string name="HW_EN">Hello world !</string>
+    <string name="sendB">Envoyer</string>
+    <string name="msgH">message</string>
+
+    <string name="pseudo">pseudo</string>
+    <string name="sub">Submit</string>
+    <string name="thLight">light</string>
+    <string name="thDark">dark</string>
+    <string name="URLrequest">http://192.168.0.47:6969</string>
+    <string name="URLgetExistingMessages">/emsgs</string>
+</resources>
