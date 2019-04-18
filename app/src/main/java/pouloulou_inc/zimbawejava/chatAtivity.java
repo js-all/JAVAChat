@@ -17,25 +17,19 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.AdapterView;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
-
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.RequestBody;
 import okhttp3.Response;
 
 
 public class chatAtivity extends Activity {
     OkHttpClient client = new OkHttpClient();
-    final Gson gson = new GsonBuilder().serializeNulls().create();
     private Activity activity = chatAtivity.this;
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -49,8 +43,14 @@ public class chatAtivity extends Activity {
         _message blank = new _message();
         blank.setAuthor("Bienvenue a toi !");
         blank.set_content("Bienvenue a " + pseudo + " !");
-        MSGs.add(blank);
-        updateMsg(MSGs);
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("author", blank.getAuthor());
+            obj.put("content", blank.get_content());
+            socket.emit("newMSG", obj);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
         Button send = findViewById(R.id.sendM);
         send.setOnClickListener(new OnClickListener() {
@@ -106,6 +106,12 @@ public class chatAtivity extends Activity {
                         return;
                     }
                     MSGs.add(new _message(jsonObject.getString("author"), jsonObject.getString("content")));
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateMsg(MSGs);
+                        }
+                    });
                 } catch (org.json.JSONException e) {}
             }
         });
@@ -117,9 +123,23 @@ public class chatAtivity extends Activity {
                         .build();
                 try (Response response = client.newCall((request)).execute()) {
                     String stringRes = response.body().string();
-                    ArrayList<_message> res = gson.fromJson(stringRes, new TypeToken<ArrayList<_message>>(){}.getType());
-                    MSGs.addAll(res);
-                    updateMsg(MSGs);
+
+                    ArrayList<_message> list = new ArrayList<>();
+                    JSONArray jsonArray = new JSONArray(stringRes);
+                    if (jsonArray != null) {
+                        int len = jsonArray.length();
+                        for (int i=0;i<len;i++){
+                            list.add(new _message(((JSONObject)jsonArray.get(i)).getString("author"), ((JSONObject)jsonArray.get(i)).getString("content")));
+                        }
+                    }
+                    MSGs.addAll(list);
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateMsg(MSGs);
+                        }
+                    });
+
 
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -129,11 +149,16 @@ public class chatAtivity extends Activity {
                             toast("unable to retrieve existing messages.");
                         }
                     });
+                } catch (JSONException e) {
+
                 }
             }
         }).start();
     }
     public void updateMsg(ArrayList<_message> msgs) {
+        while(msgs.size() > 100) {
+            msgs.remove(0);
+        }
         ArrayList<HashMap<String,String>> liste = new ArrayList<HashMap<String,String>>();
         HashMap<String,String> elements;
         for (int i = 0 ; i < msgs.size() ; i++) {
